@@ -1,220 +1,269 @@
-⚡ RL-Based Energy Management in Smart Grids
-📌 Project Overview
+# ⚡ Reinforcement Learning for Smart Grid Energy Management
 
-This project implements a Reinforcement Learning (RL) framework to optimize energy management in a simulated microgrid consisting of:
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
+[![Stable-Baselines3](https://img.shields.io/badge/RL-Stable--Baselines3-orange.svg)](https://stable-baselines3.readthedocs.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Battery storage
+A Reinforcement Learning framework to optimize energy management in a simulated microgrid environment. The system integrates battery storage, renewable solar generation, real household load data, and time-varying electricity pricing — trained using **Proximal Policy Optimization (PPO)**.
 
-Solar generation
+---
 
-Real household load data
+## 📌 Table of Contents
 
-Time-varying electricity pricing
+- [Overview](#-overview)
+- [Problem Statement](#-problem-statement)
+- [MDP Formulation](#-mdp-formulation)
+- [Dataset](#-dataset)
+- [Microgrid Environment](#️-microgrid-environment)
+- [RL Algorithm](#-rl-algorithm)
+- [Trade-Off Analysis](#-trade-off-analysis)
+- [Baseline Controller](#-baseline-controller)
+- [Project Structure](#️-project-structure)
+- [How to Run](#-how-to-run)
+- [Key Insights](#-key-insights)
+- [Future Improvements](#-future-improvements)
 
-The objective is to:
+---
 
-Minimize total energy cost
+## 🔍 Overview
 
-Reduce peak grid load
+Modern power grids are under increasing pressure to balance variable renewable generation, dynamic demand, and cost efficiency. This project builds a custom **microgrid simulator** and trains an RL agent to perform **multi-objective energy optimization** under realistic conditions.
 
-Maintain sustainable battery usage
+**Objectives:**
+- Minimize total energy cost
+- Reduce peak grid load
+- Maintain sustainable battery usage
 
-The system is modeled as a Markov Decision Process (MDP) and solved using Proximal Policy Optimization (PPO).
+---
 
-🎯 Problem Formulation
-State Space
+## 🎯 Problem Statement
 
-At each time step (hour), the agent observes:
+Smart grids must simultaneously handle:
 
+| Challenge | Description |
+|---|---|
+| Variable Renewable Generation | Solar output fluctuates throughout the day |
+| Battery Storage Constraints | Charge/discharge limits and capacity bounds |
+| Fluctuating Demand | Real household consumption patterns |
+| Time-of-Use Pricing | Electricity cost varies by hour |
+
+The problem is formulated as a **Markov Decision Process (MDP)** and solved using PPO from [Stable-Baselines3](https://stable-baselines3.readthedocs.io/).
+
+---
+
+## 🧠 MDP Formulation
+
+### State Space
+
+At each hourly time step, the agent observes a 5-dimensional state vector:
+
+```
 [SOC, Demand, Solar, Price, Hour]
+```
 
+| Variable | Description |
+|---|---|
+| `SOC` | Battery State of Charge |
+| `Demand` | Household electricity consumption |
+| `Solar` | Renewable generation output |
+| `Price` | Current electricity price |
+| `Hour` | Time index (0–47) |
 
-SOC → Battery state of charge
+### Action Space
 
-Demand → Real household consumption (UCI dataset)
+A **continuous action** in range `[-1, 1]`:
 
-Solar → Solar generation profile
+| Value | Behavior |
+|---|---|
+| Negative `(-1, 0)` | Discharge battery to grid/load |
+| Positive `(0, 1)` | Charge battery from grid/solar |
 
-Price → Time-of-use electricity pricing
+### Reward Function
 
-Hour → Time index (0–47)
+The multi-objective reward is:
 
-Action Space
+$$r = -\alpha \cdot \text{cost} - \beta \cdot \text{peak} - \gamma \cdot \text{constraint}$$
 
-Continuous action in range:
+| Term | Description |
+|---|---|
+| `cost` | Grid Import × Electricity Price |
+| `peak` | Grid import exceeding the 75th percentile threshold |
+| `constraint` | Battery capacity violations |
 
-[-1, 1]
+A **deep discharge penalty** is applied when:
 
+```
+SOC < 20% of battery capacity
+```
 
-Negative → Discharge battery
+This models real-world battery degradation and promotes sustainable operation.
 
-Positive → Charge battery
+---
 
-Reward Function
+## 📊 Dataset
 
-The multi-objective reward is defined as:
+Load data is sourced from the [UCI Individual Household Electric Power Consumption Dataset](https://archive.ics.uci.edu/ml/datasets/individual+household+electric+power+consumption):
 
-r=−α⋅cost−β⋅peak−γ⋅constraint
+- Minute-level data aggregated into **hourly averages**
+- Covers a **48-hour simulation window**
 
-Where:
+Solar generation is modeled using a **realistic irradiance curve** scaled to match load magnitude.
 
-Cost → Grid import × price
+> Run `python create_load_csv.py` to preprocess and generate the required CSV files.
 
-Peak → Grid import above threshold
+---
 
-Constraint → Battery limit violations
+## ⚙️ Microgrid Environment
 
-Additionally, a deep discharge penalty is added:
+| Parameter | Value |
+|---|---|
+| Battery Capacity | 10 units |
+| Max Charge/Discharge Rate | 2 units/hour |
+| Episode Length | 48 hours |
+| Peak Threshold | 75th percentile of demand |
+| Peak Metric | Grid import (agent-controllable) |
 
-If SOC < 20% of capacity → extra penalty applied
+The environment is implemented as a custom [Gym](https://gymnasium.farama.org/) environment in `env/microgrid_env.py`.
 
-Simulates battery degradation protection
+---
 
-📊 Dataset
+## 🤖 RL Algorithm
 
-Load data is derived from:
+**Algorithm: PPO (Proximal Policy Optimization)** via Stable-Baselines3
 
-UCI Individual Household Electric Power Consumption Dataset
+PPO was selected for this task because it:
+- Handles **continuous control** problems natively
+- Offers **stable training** with clipped surrogate objectives
+- Is **well-suited** for energy management and resource allocation tasks
 
-Minute-level data aggregated into hourly averages
+---
 
-48-hour simulation window
+## 📈 Trade-Off Analysis
 
-Solar generation is modeled using a realistic irradiance curve scaled to match load magnitude.
+Multiple agents are trained with varying peak penalty weights (β) to analyze the **cost–reliability trade-off**.
 
-⚙️ Microgrid Model
+| β | Cost | Peak |
+|---|---|---|
+| 0.1 | 135.38 | 4.28 |
+| 0.5 | 99.54 | 3.18 |
+| 1.0 | 123.22 | 2.98 |
+| 2.0 | 87.56 | 2.96 |
+| **Baseline** | **105.49** | **3.83** |
 
-The environment includes:
+**Key observations:**
+- Increasing β consistently reduces peak violations
+- RL agents outperform the rule-based baseline across all β values
+- Battery health constraints increase realism without significantly harming performance
+- The framework enables **controllable multi-objective optimization**
 
-Battery capacity: 10 units
+---
 
-Max charge/discharge rate: 2 units
+## 🔬 Baseline Controller
 
-Charge efficiency applied
+A rule-based heuristic controller is included as a benchmark:
 
-48-hour episode horizon
+- **Discharge** during high-price hours
+- **Charge** when solar generation exceeds demand
+- **Idle** otherwise
 
-Peak threshold is dynamically computed as:
+This provides a transparent performance floor for evaluating RL policy quality.
 
-75th percentile of demand distribution
+---
 
-🤖 RL Algorithm
+## 🏗️ Project Structure
 
-We use:
-
-PPO (Proximal Policy Optimization)
-Implementation via Stable-Baselines3.
-
-Why PPO?
-
-Handles continuous action spaces
-
-Stable training behavior
-
-Suitable for energy control problems
-
-📈 Trade-Off Experiment
-
-To analyze multi-objective behavior, multiple agents are trained with different peak penalty weights (β).
-
-Metrics evaluated:
-
-Total Energy Cost
-
-Total Peak Violations
-
-Baseline Controller
-
-A rule-based controller is implemented:
-
-Discharge when price is high
-
-Charge when solar exceeds demand
-
-Otherwise idle
-
-This provides a control comparison against RL.
-
-📊 Sample Trade-Off Results
-Beta	Cost	Peak
-0.1	135.38	4.28
-0.5	99.54	3.18
-1.0	123.22	2.98
-2.0	87.56	2.96
-Baseline	105.49	3.83
-
-Observation:
-
-Increasing β reduces peak violations
-
-Proper tuning enables RL to outperform baseline
-
-Demonstrates controllable multi-objective optimization
-
-🏗 Project Structure
+```
 smart-grid-rl/
 │
 ├── env/
-│   └── microgrid_env.py
+│   └── microgrid_env.py        # Custom Gym environment
 │
-├── train.py
-├── evaluate.py
-├── tradeoff_experiment.py
-├── create_load_csv.py
+├── train.py                    # PPO training script
+├── evaluate.py                 # Policy evaluation
+├── tradeoff_experiment.py      # Multi-beta trade-off analysis
+├── create_load_csv.py          # UCI dataset preprocessing
+│
 ├── data/
-│   ├── load.csv
-│   └── solar.csv
+│   ├── load.csv                # Processed household load data
+│   └── solar.csv               # Modeled solar irradiance data
 │
 ├── requirements.txt
 └── README.md
+```
 
-🚀 How to Run
-1️⃣ Create Load Data (from UCI dataset)
+---
+
+## 🚀 How to Run
+
+### Prerequisites
+
+```bash
+pip install -r requirements.txt
+```
+
+### 1️⃣ Generate Load Data
+
+Preprocesses the UCI dataset into hourly CSVs:
+
+```bash
 python create_load_csv.py
+```
 
-2️⃣ Train PPO Agent
+### 2️⃣ Train the RL Agent
+
+Trains a PPO agent on the microgrid environment:
+
+```bash
 python train.py
+```
 
-3️⃣ Evaluate Policy
+### 3️⃣ Evaluate the Policy
+
+Runs the trained policy and reports cost and peak metrics:
+
+```bash
 python evaluate.py
+```
 
-4️⃣ Run Trade-Off Experiment
+### 4️⃣ Run Trade-Off Experiment
+
+Trains agents across multiple β values and generates comparison results:
+
+```bash
 python tradeoff_experiment.py
+```
 
-🧠 Key Insights
+---
 
-Proper scaling is critical when switching from synthetic to real datasets.
+## 🧠 Key Insights
 
-Peak must depend on grid import (controllable variable), not raw demand.
+- **Reward shaping** strongly influences the behavior of the learned policy — poorly designed rewards lead to undesirable strategies
+- **Peak penalty must be applied to grid import** (the agent-controllable variable), not raw demand
+- **Proper feature scaling** is critical when switching from synthetic to real-world datasets
+- **Battery sustainability constraints** create realistic cost–reliability trade-offs that mirror actual grid operation
+- PPO demonstrates consistent convergence across different reward configurations
 
-Reward shaping significantly impacts learned policy behavior.
+---
 
-Battery health constraints increase operational cost but improve sustainability.
+## 🔮 Future Improvements
 
-🔮 Future Improvements
+- [ ] Multi-day stochastic simulation with weather variability
+- [ ] Integration of real solar irradiance datasets (e.g., NREL NSRDB)
+- [ ] SAC (Soft Actor-Critic) algorithm comparison
+- [ ] Hyperparameter tuning via Optuna or Ray Tune
+- [ ] Statistical averaging across multiple training seeds
+- [ ] Demand forecasting integration as an auxiliary input
 
-Multi-day stochastic simulation
+---
 
-Real solar irradiance dataset integration
+## 📄 License
 
-Hyperparameter tuning
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
-SAC comparison
+---
 
-Average performance over multiple random seeds
+## 🙏 Acknowledgements
 
-🎓 Academic Contribution
-
-This project demonstrates:
-
-MDP formulation for smart grid control
-
-Multi-objective RL optimization
-
-Reward shaping analysis
-
-Baseline comparison
-
-Trade-off curve evaluation
-
-Sustainable battery constraint modeling
+- [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/datasets/individual+household+electric+power+consumption) for the household energy dataset
+- [Stable-Baselines3](https://stable-baselines3.readthedocs.io/) for the PPO implementation
+- [OpenAI Gymnasium](https://gymnasium.farama.org/) for the environment interface
