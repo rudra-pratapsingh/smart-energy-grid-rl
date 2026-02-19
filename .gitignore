@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.pth
+*.zip
+ppo_microgrid.zip
+venv/
+data/household_power_consumption.txt
