@@ -19,7 +19,7 @@ df.set_index("datetime", inplace=True)
 
 hourly = df["Global_active_power"].resample("h").mean()
 
-hourly = hourly[100:148]
+hourly = hourly[100:268]
 
 load_df = pd.DataFrame({"load": hourly.values})
 load_df.to_csv("data/load.csv", index=False)

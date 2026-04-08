@@ -22,7 +22,7 @@ class MicrogridEnv(gym.Env):
         self.beta = beta
         self.gamma = gamma
 
-        self.max_steps = 48
+        self.max_steps = 168
         self.current_step = 0
         self.total_cost = 0
         self.total_peak = 0
@@ -43,11 +43,11 @@ class MicrogridEnv(gym.Env):
         load_df = pd.read_csv("data/load.csv")
         solar_df = pd.read_csv("data/solar.csv")
 
-        self.demand_profile = load_df["load"].values[:48]
-        self.solar_profile = solar_df["solar"].values[:48]
+        self.demand_profile = load_df["load"].values[:168]
+        self.solar_profile = solar_df["solar"].values[:168]
         self.peak_threshold = np.percentile(self.demand_profile, 75)
 
-        hours = range(48)
+        hours = range(168)
         self.price_profile = [5 if (h % 24) < 18 else 10 for h in hours] 
 
     def reset(self, seed=None, options=None):
@@ -122,3 +122,4 @@ class MicrogridEnv(gym.Env):
             state = np.zeros(5, dtype=np.float32)
 
         return state, reward, done, False, {}
+        

@@ -8,7 +8,7 @@ def train_and_evaluate(beta_value):
     env = MicrogridEnv(beta=beta_value)
 
     model = PPO("MlpPolicy", env, verbose=0)
-    model.learn(total_timesteps=50000)  
+    model.learn(total_timesteps=100000)  
 
     obs, _ = env.reset()
     done = False
@@ -63,7 +63,6 @@ if __name__ == "__main__":
 
     print(f"Baseline → Cost={baseline_cost:.2f}, Peak={baseline_peak:.2f}")
 
-    # Plot trade-off
     plt.figure()
     plt.scatter(peaks, costs)
     plt.scatter(baseline_peak, baseline_cost, marker="x", s=150)

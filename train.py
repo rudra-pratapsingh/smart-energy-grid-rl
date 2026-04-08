@@ -15,7 +15,7 @@ def train():
         gamma=0.99
     )
 
-    model.learn(total_timesteps=200000)
+    model.learn(total_timesteps=300000)
 
     model.save("ppo_microgrid")
 
