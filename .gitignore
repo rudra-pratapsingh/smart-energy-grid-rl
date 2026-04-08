@@ -2,6 +2,10 @@ __pycache__/
 *.pyc
 *.pth
 *.zip
+*.pptx
 ppo_microgrid.zip
 venv/
 data/household_power_consumption.txt
+data/2020-263907-one_axis.csv
+config.py
+results

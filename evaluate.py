@@ -1,35 +1,48 @@
-import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
-from stable_baselines3 import PPO
-from env.microgrid_env import MicrogridEnv
 
-def evaluate():
-    env = MicrogridEnv()
-    model = PPO.load("ppo_microgrid")
+df = pd.read_csv("results.csv")
 
-    obs, _ = env.reset()
+avg_cost = df["cost"].mean()
+avg_peak = df["peak"].mean()
 
-    soc_list = []
-    demand_list = []
-    action_list = []
-    cost_total = 0
+print("Average Cost:", avg_cost)
+print("Average Peak:", avg_peak)
 
-    done = False
-    while not done:
-        action, _ = model.predict(obs)
-        obs, reward, done, _, _ = env.step(action)
+plt.figure()
+plt.bar(df["model"], df["cost"])
+plt.title("Cost per Model")
+plt.xlabel("Model")
+plt.ylabel("Cost")
+plt.savefig("cost_per_model.png")
 
-        soc_list.append(env.soc)
-        demand_list.append(env.demand_profile[env.current_step-1])
-        action_list.append(action[0])
+plt.figure()
+plt.bar(df["model"], df["peak"])
+plt.title("Peak Violations per Model")
+plt.xlabel("Model")
+plt.ylabel("Peak")
+plt.savefig("peak_per_model.png")
 
-    print("Final SOC:", env.soc)
-    print("Total Cost:", env.total_cost)
-    print("Total Peak Violations:", env.total_peak)
+plt.figure()
+plt.scatter(df["peak"], df["cost"])
 
-    plt.plot(soc_list)
-    plt.title("Battery SOC over Time")
-    plt.show()
+for i in range(len(df)):
+    plt.text(df["peak"][i], df["cost"][i], f"M{i}")
 
-if __name__ == "__main__":
-    evaluate()
+plt.xlabel("Peak Violations")
+plt.ylabel("Cost")
+plt.title("Cost vs Peak Trade-off (Models)")
+plt.savefig("cost_vs_peak.png")
+
+plt.figure()
+plt.scatter(df["peak"], df["cost"], label="Models")
+plt.axhline(avg_cost, linestyle="--", label="Avg Cost")
+plt.axvline(avg_peak, linestyle="--", label="Avg Peak")
+
+plt.xlabel("Peak")
+plt.ylabel("Cost")
+plt.title("Average Performance")
+plt.legend()
+plt.savefig("average_performance.png")
+
+print("Graphs saved successfully!")

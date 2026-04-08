@@ -113,6 +113,8 @@ class MicrogridEnv(gym.Env):
         if self.soc < 0.2 * self.battery_capacity:
             reward -= 5.0
 
+        reward -= 0.1 * abs(charge_amount)
+
         self.current_step += 1
         done = self.current_step >= self.max_steps
 
